@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公交场站轮椅坡板点检与车辆放行系统</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">♿</span>
+    <div>
+      <h1>轮椅坡板点检与车辆放行</h1>
+      <span class="brand-sub">公交场站无障碍安全管控台</span>
+    </div>
+  </div>
+  <div class="role-box">
+    <label>当前操作者</label>
+    <div class="role-tabs" id="roleTabs">
+      <button data-role="driver" class="active">驾驶员（点检）</button>
+      <button data-role="dispatcher">调度员（换车/放行）</button>
+      <button data-role="mechanic">维修人员</button>
+    </div>
+    <select id="staffSelect" class="staff-select"></select>
+  </div>
+</header>
+
+<div class="alert-strip" id="alertStrip" hidden></div>
+
+<nav class="main-tabs" id="mainTabs">
+  <button data-tab="board" class="active">待发板</button>
+  <button data-tab="inspect">车辆点检</button>
+  <button data-tab="ramp">坡板测试</button>
+  <button data-tab="fault">故障停用</button>
+  <button data-tab="spare">备用车调配</button>
+  <button data-tab="repair">维修进度</button>
+  <button data-tab="reinspect">复检</button>
+  <button data-tab="release">放行记录</button>
+  <button data-tab="log">全程留痕</button>
+</nav>
+
+<main id="view"></main>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
