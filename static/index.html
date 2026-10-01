@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>公交场站轮椅坡板点检与车辆放行系统</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">♿</span>
+    <div>
+      <h1>轮椅坡板点检与车辆放行</h1>
+      <p class="brand-sub">公交场站无障碍出场管理</p>
+    </div>
+  </div>
+  <div class="actor-box">
+    <label for="actor-select">当前身份</label>
+    <select id="actor-select"></select>
+    <span id="actor-role" class="role-chip"></span>
+  </div>
+</header>
+
+<div id="reminder-bar" class="reminder-bar" hidden></div>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="board"   class="tab active">线路待发板</button>
+  <button data-tab="inspect" class="tab">车辆点检</button>
+  <button data-tab="ramp"    class="tab">坡板测试</button>
+  <button data-tab="faults"  class="tab">故障停用</button>
+  <button data-tab="swap"    class="tab">备用车调配</button>
+  <button data-tab="repairs" class="tab">维修进度</button>
+  <button data-tab="recheck" class="tab">复检</button>
+  <button data-tab="releases" class="tab">放行记录</button>
+  <button data-tab="events"  class="tab">留痕日志</button>
+</nav>
+
+<main>
+  <!-- 线路待发板：高密度行，坡板状态在车辆编号旁 -->
+  <section id="tab-board" class="tab-page active">
+    <div class="page-head">
+      <h2>线路待发板</h2>
+      <button class="btn ghost" id="board-refresh">刷新</button>
+    </div>
+    <div id="board-list"></div>
+  </section>
+
+  <!-- 车辆点检：驾驶员端，大字，侧视车辆轮廓 -->
+  <section id="tab-inspect" class="tab-page">
+    <div class="page-head"><h2>车辆点检</h2></div>
+    <div class="inspect-layout">
+      <div class="inspect-left card">
+        <label class="big-label" for="inspect-shift">选择待发班次</label>
+        <select id="inspect-shift" class="big-select"></select>
+        <div id="inspect-vehicle-info" class="vehicle-info"></div>
+        <!-- 侧视车辆轮廓：标出坡板与呼叫按钮位置 -->
+        <svg id="bus-svg" viewBox="0 0 640 240" class="bus-svg" role="img"
+             aria-label="侧视车辆轮廓，标出坡板与呼叫按钮位置">
+          <rect x="24" y="48" width="592" height="122" rx="20" class="bus-body"/>
+          <rect x="44" y="66" width="360" height="42" rx="8" class="bus-window"/>
+          <rect x="420" y="66" width="52" height="42" rx="8" class="bus-window"/>
+          <rect x="486" y="66" width="56" height="104" rx="6" class="bus-door"/>
+          <line x1="514" y1="66" x2="514" y2="170" class="bus-door-line"/>
+          <circle cx="130" cy="180" r="30" class="bus-wheel"/>
+          <circle cx="130" cy="180" r="12" class="bus-wheel-hub"/>
+          <circle cx="500" cy="180" r="30" class="bus-wheel"/>
+          <circle cx="500" cy="180" r="12" class="bus-wheel-hub"/>
+          <rect x="24" y="150" width="592" height="8" class="bus-skirt"/>
+          <!-- 坡板位置（前门下方） -->
+          <g id="marker-ramp">
+            <rect x="482" y="158" width="64" height="16" rx="4" class="marker-ramp"/>
+            <text x="514" y="148" text-anchor="middle" class="marker-label-ramp">坡板</text>
+            <circle cx="514" cy="166" r="26" class="marker-pulse-ramp"/>
+          </g>
+          <!-- 呼叫按钮位置（车厢内前部） -->
+          <g id="marker-button">
+            <circle cx="452" cy="128" r="11" class="marker-button"/>
+            <text x="452" y="132" text-anchor="middle" class="marker-button-icon">♿</text>
+            <text x="452" y="98" text-anchor="middle" class="marker-label-btn">呼叫按钮</text>
+            <circle cx="452" cy="128" r="22" class="marker-pulse-btn"/>
+          </g>
+        </svg>
+        <button id="read-signals" class="btn blue big-btn">读取车载终端信号</button>
+        <div id="signal-readout" class="signal-readout"></div>
+      </div>
+      <div class="inspect-right card">
+        <h3 class="inspect-title">点检项目（全部合格才可放行）</h3>
+        <div id="inspect-items" class="inspect-items"></div>
+        <label class="big-label" for="inspect-notes">备注</label>
+        <textarea id="inspect-notes" class="big-textarea" rows="2"
+                  placeholder="异常情况请说明"></textarea>
+        <label class="big-label" for="inspect-photo">测试照片（存本地 photos/）</label>
+        <input type="file" id="inspect-photo" accept="image/*" class="photo-input">
+        <button id="submit-inspection" class="btn orange submit-btn">提交点检</button>
+        <div id="inspect-result" class="inspect-result" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 坡板测试 -->
+  <section id="tab-ramp" class="tab-page">
+    <div class="page-head">
+      <h2>坡板测试</h2>
+      <button class="btn ghost" id="ramp-refresh">刷新</button>
+    </div>
+    <p class="hint">信号来自模拟车载终端与门控适配器；展开/收回测试结果自动记录。</p>
+    <div id="ramp-vehicles" class="ramp-grid"></div>
+    <h3 class="section-title">最近测试记录</h3>
+    <div id="ramp-tests"></div>
+  </section>
+
+  <!-- 故障停用 -->
+  <section id="tab-faults" class="tab-page">
+    <div class="page-head"><h2>故障停用</h2></div>
+    <div class="faults-layout">
+      <form id="fault-form" class="card fault-form">
+        <h3 class="section-title">故障报修</h3>
+        <label>车辆</label><select id="fault-vehicle"></select>
+        <label>故障类型</label><select id="fault-type"></select>
+        <label>级别</label>
+        <select id="fault-severity">
+          <option value="access">无障碍功能停用</option>
+          <option value="vehicle">整车待修</option>
+        </select>
+        <label>描述</label>
+        <textarea id="fault-desc" rows="3" placeholder="故障现象"></textarea>
+        <button type="submit" class="btn orange">提交报修</button>
+      </form>
+      <div class="card">
+        <h3 class="section-title">故障列表</h3>
+        <div id="fault-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 备用车调配 -->
+  <section id="tab-swap" class="tab-page">
+    <div class="page-head">
+      <h2>备用车调配</h2>
+      <button class="btn ghost" id="swap-refresh">刷新</button>
+    </div>
+    <p class="hint">仅调度员可换车；备用车须满足线路无障碍与载客容量要求。</p>
+    <div id="swap-list"></div>
+  </section>
+
+  <!-- 维修进度 -->
+  <section id="tab-repairs" class="tab-page">
+    <div class="page-head">
+      <h2>维修进度</h2>
+      <button class="btn ghost" id="repairs-refresh">刷新</button>
+    </div>
+    <div id="repair-list"></div>
+  </section>
+
+  <!-- 复检 -->
+  <section id="tab-recheck" class="tab-page">
+    <div class="page-head">
+      <h2>复检</h2>
+      <button class="btn ghost" id="recheck-refresh">刷新</button>
+    </div>
+    <p class="hint">维修完成的车辆须由驾驶员复检合格才能恢复；维修人员不能批准复检。</p>
+    <h3 class="section-title">待复检车辆</h3>
+    <div id="recheck-pending"></div>
+    <h3 class="section-title">复检结论（图标 + 文字）</h3>
+    <div id="recheck-history"></div>
+  </section>
+
+  <!-- 放行记录 -->
+  <section id="tab-releases" class="tab-page">
+    <div class="page-head">
+      <h2>放行记录</h2>
+      <button class="btn ghost" id="releases-refresh">刷新</button>
+    </div>
+    <div id="release-list"></div>
+  </section>
+
+  <!-- 留痕日志 -->
+  <section id="tab-events" class="tab-page">
+    <div class="page-head">
+      <h2>留痕日志</h2>
+      <button class="btn ghost" id="events-refresh">刷新</button>
+    </div>
+    <div id="event-list"></div>
+  </section>
+</main>
+
+<dialog id="handover-dialog">
+  <h3>驾驶员交接</h3>
+  <p id="handover-shift-label"></p>
+  <select id="handover-driver"></select>
+  <div class="dialog-actions">
+    <button id="handover-cancel" class="btn ghost">取消</button>
+    <button id="handover-ok" class="btn blue">确认交接</button>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
